@@ -10,7 +10,10 @@ from keras.optimizers import Adam
 from keras import losses
 from keras.utils import to_categorical
 import keras.backend as K
+from sklearn.utils import shuffle
 
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 import numpy as np
@@ -113,7 +116,7 @@ class SGAN:
 
         # Load the dataset
         (X_train, y_train), (_, _) = mnist.load_data()
-        x, y = shuffle(train_images, train_labels, random_state=15)
+        x, y = shuffle(X_train, y_train, random_state=15)
         X_train = x[0:100]
         y_train = y[0:100]
 
@@ -171,6 +174,7 @@ class SGAN:
             # If at save interval => save generated image samples
             if epoch % sample_interval == 0:
                 self.sample_images(epoch)
+                self.save_model()
 
     def sample_images(self, epoch):
         r, c = 5, 5
@@ -187,14 +191,15 @@ class SGAN:
                 axs[i,j].imshow(gen_imgs[cnt, :,:,0], cmap='gray')
                 axs[i,j].axis('off')
                 cnt += 1
-        fig.savefig("images/mnist_%d.png" % epoch)
+        fig.savefig("images/sgan/%d.png" % epoch)
         plt.close()
 
     def save_model(self):
 
         def save(model, model_name):
-            model_path = "saved_model/%s.json" % model_name
-            weights_path = "saved_model/%s_weights.hdf5" % model_name
+            model_path = "models/gans/sgan/%s.json" % model_name
+            weights_path = "models/gans/sgan/%s_weights.hdf5" % model_name
+            weights_path = "models/gans/sgan/%s.hdf5" % model_name
             options = {"file_arch": model_path,
                         "file_weight": weights_path}
             json_string = model.to_json()
@@ -203,9 +208,10 @@ class SGAN:
 
         save(self.generator, "mnist_sgan_generator")
         save(self.discriminator, "mnist_sgan_discriminator")
-        save(self.combined, "mnist_sgan_adversarial")
+        self.discriminator.save("models/gans/sgan/mnist_sgan_discriminator.h5")
+        #save(self.combined, "mnist_sgan_adversarial")
 
 
 if __name__ == '__main__':
     sgan = SGAN()
-    sgan.train(epochs=20000, batch_size=32, sample_interval=50)
+    sgan.train(epochs=20000, batch_size=32, sample_interval=200)
