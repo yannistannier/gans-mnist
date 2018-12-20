@@ -7,12 +7,13 @@ from __future__ import print_function, division
 from keras.datasets import mnist
 from keras.layers.merge import _Merge
 from keras.layers import Input, Dense, Reshape, Flatten, Dropout
-from keras.layers import BatchNormalization, Activation, ZeroPadding2D
+from keras.layers import BatchNormalization, Activation, ZeroPadding2D, MaxPooling2D
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import UpSampling2D, Conv2D
 from keras.models import Sequential, Model
 from keras.optimizers import RMSprop
 from functools import partial
+from sklearn.utils import shuffle
 
 import keras.backend as K
 
@@ -150,34 +151,25 @@ class WGANGP():
         return Model(noise, img)
 
     def build_critic(self):
-
         model = Sequential()
-
-        model.add(Conv2D(16, kernel_size=3, strides=2, input_shape=self.img_shape, padding="same"))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(Dropout(0.25))
-        model.add(Conv2D(32, kernel_size=3, strides=2, padding="same"))
-        model.add(ZeroPadding2D(padding=((0,1),(0,1))))
-        model.add(BatchNormalization(momentum=0.8))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(Dropout(0.25))
-        model.add(Conv2D(64, kernel_size=3, strides=2, padding="same"))
-        model.add(BatchNormalization(momentum=0.8))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(Dropout(0.25))
-        model.add(Conv2D(128, kernel_size=3, strides=1, padding="same"))
-        model.add(BatchNormalization(momentum=0.8))
-        model.add(LeakyReLU(alpha=0.2))
-        model.add(Dropout(0.25))
+        model.add(Conv2D(32, (3, 3), input_shape=(28,28,1)))
+        model.add(Activation('relu'))
+        model.add(BatchNormalization(axis=-1))
+        model.add(Conv2D(32, (3, 3)))
+        model.add(Activation('relu'))
+        model.add(MaxPooling2D(pool_size=(2,2)))
+        model.add(BatchNormalization(axis=-1))
+        model.add(Conv2D(64,(3, 3)))
+        model.add(Activation('relu'))
+        model.add(BatchNormalization(axis=-1))
+        model.add(Conv2D(64, (3, 3)))
+        model.add(Activation('relu'))
+        model.add(MaxPooling2D(pool_size=(2,2)))
         model.add(Flatten())
+        model.add(Dense(256, activation = "relu"))
         model.add(Dense(1))
-
-        model.summary()
-
-        img = Input(shape=self.img_shape)
-        validity = model(img)
-
-        return Model(img, validity)
+        model.add(Activation('sigmoid'))
+        return model
 
     def train(self, epochs, batch_size, sample_interval=50):
 
@@ -221,6 +213,7 @@ class WGANGP():
             # If at save interval => save generated image samples
             if epoch % sample_interval == 0:
                 self.sample_images(epoch)
+                self.save_model()
 
     def sample_images(self, epoch):
         r, c = 5, 5
@@ -259,4 +252,4 @@ class WGANGP():
 
 if __name__ == '__main__':
     wgan = WGANGP()
-    wgan.train(epochs=30000, batch_size=32, sample_interval=100)
+    wgan.train(epochs=10000, batch_size=32, sample_interval=500)
